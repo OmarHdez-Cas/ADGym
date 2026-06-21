@@ -1,0 +1,223 @@
+<!-- POS View -->
+<div class="fade-in" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+    
+    <!-- Main Area: Catalog -->
+    <div class="glass-panel" style="flex: 1; padding: 20px; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="font-size: 1.2rem; margin: 0;">Catálogo Rápido</h3>
+        </div>
+        <div id="quick-products-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px;">
+            <p style="color: var(--text-muted);">Cargando productos...</p>
+        </div>
+        
+        <!-- Visitas Personalizadas -->
+        <div style="margin-top: 30px; border-top: 1px solid var(--glass-border); padding-top: 20px;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 15px;"><i class="fa-solid fa-person-walking"></i> Cobrar Visitas</h3>
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Precio ($)</label>
+                    <input type="number" id="visit-price" value="60" min="0" step="0.01" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Cantidad</label>
+                    <input type="number" id="visit-qty" value="1" min="1" step="1" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                </div>
+                <button onclick="addCustomVisit()" class="btn hover-scale" style="background: var(--purple); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; height: 44px;">
+                    <i class="fa-solid fa-plus"></i> Añadir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Cart -->
+    <div class="glass-panel" style="padding: 20px; display: flex; flex-direction: column; height: 100%;">
+        <h3 style="margin-bottom: 15px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;"><i class="fa-solid fa-cart-shopping text-primary"></i> Venta Actual</h3>
+        
+        <div id="cart-items" style="flex: 1; overflow-y: auto; margin-bottom: 20px;">
+            <p style="text-align: center; color: var(--text-muted); margin-top: 50px;">El carrito está vacío</p>
+        </div>
+
+        <div style="border-top: 1px solid var(--glass-border); padding-top: 15px;">
+            <div style="display: flex; justify-content: space-between; font-size: 1.5rem; font-weight: 700; margin-bottom: 15px;">
+                <span>Total:</span>
+                <span class="text-success" id="cart-total">$0.00</span>
+            </div>
+            <button id="btn-process-sale" onclick="processSale()" class="hover-scale" style="width: 100%; background: var(--success); color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.2rem; font-weight: 600; cursor: pointer;">
+                Cobrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    let posProducts = [];
+    let cart = [];
+
+    fetch('/api/products')
+        .then(res => res.json())
+        .then(data => {
+            posProducts = data;
+            renderQuickCatalog(data);
+        });
+
+    function renderQuickCatalog(products) {
+        const grid = document.getElementById('quick-products-grid');
+        grid.innerHTML = '';
+        if(products.length === 0) {
+            grid.innerHTML = '<p style="color:var(--text-muted);">No hay productos.</p>';
+            return;
+        }
+        products.forEach(p => {
+            grid.innerHTML += `
+                <div onclick="window.addToCart(${p.id})" class="glass-panel hover-scale" style="padding: 10px; cursor: pointer; text-align: center; border: 1px solid var(--glass-border);">
+                    <h4 style="font-size: 0.9rem; margin-bottom: 5px;">${p.name}</h4>
+                    <span class="text-success" style="font-weight: bold;">$${p.price.toFixed(2)}</span>
+                </div>
+            `;
+        });
+    }
+
+    window.addToCart = function(productId) {
+        const prod = posProducts.find(p => p.id === productId);
+        if(!prod) return;
+        
+        const existing = cart.find(item => item.product_id === productId);
+        if(existing) {
+            existing.qty++;
+        } else {
+            cart.push({
+                product_id: prod.id,
+                name: prod.name,
+                price: prod.price,
+                qty: 1
+            });
+        }
+        renderCart();
+    }
+
+    window.addCustomVisit = function() {
+        const priceInput = document.getElementById('visit-price').value;
+        const qtyInput = document.getElementById('visit-qty').value;
+        
+        const price = parseFloat(priceInput);
+        const qty = parseInt(qtyInput);
+        
+        if(!isNaN(price) && price >= 0 && !isNaN(qty) && qty > 0) {
+            const existing = cart.find(i => i.id === 'visita' && i.price === price);
+            if(existing) {
+                existing.qty += qty;
+            } else {
+                cart.push({
+                    id: 'visita',
+                    name: 'Visita de Gimnasio',
+                    price: price,
+                    qty: qty
+                });
+            }
+            renderCart();
+            document.getElementById('visit-price').value = "60";
+            document.getElementById('visit-qty').value = "1";
+        } else {
+            alert("Valores inválidos para visita");
+        }
+    }
+
+    window.removeFromCart = function(id) {
+        cart = cart.filter(item => String(item.id || item.product_id) !== String(id));
+        renderCart();
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cart-items');
+        container.innerHTML = '';
+        let total = 0;
+        
+        if(cart.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 50px;">El carrito está vacío</p>';
+            document.getElementById('cart-total').innerText = '$0.00';
+            document.getElementById('btn-process-sale').disabled = true;
+            return;
+        }
+
+        document.getElementById('btn-process-sale').disabled = false;
+
+        cart.forEach(item => {
+            const subtotal = item.qty * item.price;
+            total += subtotal;
+            container.innerHTML += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500;">${item.name}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted);">${item.qty} x $${item.price.toFixed(2)}</div>
+                    </div>
+                    <div style="font-weight: 600; margin-right: 15px;">$${subtotal.toFixed(2)}</div>
+                    <button onclick="window.removeFromCart('${item.id || item.product_id}')" style="background:transparent; border:none; color:var(--danger); cursor:pointer;"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `;
+        });
+        document.getElementById('cart-total').innerText = '$' + total.toFixed(2);
+    }
+
+    window.processSale = async function() {
+        if(cart.length === 0) return;
+        const btn = document.getElementById('btn-process-sale');
+        const originalBg = btn.style.background;
+        btn.innerText = 'Procesando...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/sales', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: cart.map(item => ({
+                    product_id: item.id === 'visita' ? null : (item.product_id || item.id),
+                    name: item.name,
+                    price: item.price,
+                    qty: item.qty
+                })) })
+            });
+            
+            if(res.ok) {
+                btn.innerText = '¡Cobro Exitoso!';
+                btn.style.background = 'var(--primary)';
+                cart = [];
+                renderCart();
+                
+                // Update catalog stock
+                fetch('/api/products')
+                    .then(r => r.json())
+                    .then(data => {
+                        posProducts = data;
+                        renderQuickCatalog(data);
+                    });
+                    
+                setTimeout(() => {
+                    btn.innerText = 'Cobrar';
+                    btn.style.background = originalBg;
+                    btn.disabled = true; // disabled because cart is empty now
+                }, 2000);
+                
+            } else {
+                const errData = await res.json().catch(()=>({}));
+                btn.innerText = 'Error: ' + (errData.message || 'Intenta de nuevo');
+                btn.style.background = 'var(--danger)';
+                setTimeout(() => {
+                    btn.innerText = 'Cobrar';
+                    btn.style.background = originalBg;
+                    btn.disabled = false;
+                }, 3000);
+            }
+        } catch(err) {
+            console.error(err);
+            btn.innerText = 'Error de conexión';
+            btn.style.background = 'var(--danger)';
+            setTimeout(() => {
+                btn.innerText = 'Cobrar';
+                btn.style.background = originalBg;
+                btn.disabled = false;
+            }, 3000);
+        }
+    }
+})();
+</script>

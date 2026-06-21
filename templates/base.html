@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Santa Fuerza</title>
+    <!-- Google Fonts: Outfit, Black Ops One, Bebas Neue -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Black+Ops+One&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logosf.png') }}">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-text"><span class="s">S</span><span class="f">F</span></div>
+                </div>
+            </div>
+            
+            <ul class="nav-links">
+                <li>
+                    <a href="#" class="nav-item active" data-target="dashboard">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Inicio</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item" data-target="pos">
+                        <i class="fa-solid fa-cash-register"></i>
+                        <span>Punto de Venta</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item" data-target="clients">
+                        <i class="fa-solid fa-users"></i>
+                        <span>Clientes</span>
+                    </a>
+                </li>
+                {% if user_role == 'admin' %}
+                <li>
+                    <a href="#" class="nav-item" data-target="employees">
+                        <i class="fa-solid fa-id-badge"></i>
+                        <span>Empleados</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item" data-target="plans">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>Planes de Membresía</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item" data-target="inventory">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        <span>Inventario</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item" data-target="reports">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <span>Reportes</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                    <div class="details">
+                        <span class="name">{{ user_name }}</span>
+                        <span class="role">{{ 'Admin' if user_role == 'admin' else 'Empleado' }}</span>
+                    </div>
+                </div>
+                <button class="btn-icon" style="margin-top: 15px; width: 100%; border-radius: 8px; color: var(--danger); border-color: var(--danger-glow);" onclick="window.location.href='/logout'">
+                    <i class="fa-solid fa-right-from-bracket"></i> <span style="font-size: 0.9rem; margin-left: 8px;">Cerrar Sesión</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 id="page-title">Inicio</h1>
+            </header>
+            
+            <!-- Dynamic content will be loaded here -->
+            <div id="content-area" class="content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

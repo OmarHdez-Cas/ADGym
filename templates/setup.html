@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Santa Fuerza</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Black+Ops+One&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logosf.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #1a1a2e, #0f0f16);
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.5;
+        }
+        .shape-1 { width: 400px; height: 400px; background: var(--success); top: -100px; left: -100px; }
+        .shape-2 { width: 300px; height: 300px; background: var(--purple); bottom: -50px; right: -50px; }
+
+        .setup-card {
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            text-align: center;
+            animation: slideUpFade 0.6s ease-out;
+        }
+
+        .setup-logo {
+            font-size: 3rem;
+            color: var(--success);
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .setup-title {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .setup-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+            position: relative;
+        }
+
+        .form-group i {
+            position: absolute;
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--success);
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-setup {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--success), #388E3C);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-setup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+
+    <div class="setup-card glass-panel">
+        <div class="logo-text" style="justify-content: center; font-size: 3rem; margin-bottom: 10px;"><span class="s">S</span><span class="f">F</span></div>
+        <h2 class="setup-title" style="font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; font-size: 2.5rem; font-weight: normal; margin-top: -10px;">Bienvenido a Santa Fuerza</h2>
+        <p class="setup-subtitle">Crea el usuario Administrador principal para comenzar</p>
+        
+        <form id="setup-form">
+            <div class="form-group">
+                <i class="fa-solid fa-id-card"></i>
+                <input type="text" id="name" class="form-control" placeholder="Tu Nombre Completo" required>
+            </div>
+            
+            <div class="form-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="username" class="form-control" placeholder="Usuario para Iniciar Sesión" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="password" class="form-control" placeholder="Contraseña Segura" required autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn-setup" id="btn-submit">
+                Comenzar <i class="fa-solid fa-check" style="margin-left: 8px;"></i>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('setup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creando...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('username', document.getElementById('username').value);
+            formData.append('password', document.getElementById('password').value);
+
+            try {
+                const response = await fetch('/setup', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    alert('Error al crear el administrador');
+                    btn.innerHTML = 'Comenzar <i class="fa-solid fa-check" style="margin-left: 8px;"></i>';
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert('Error de conexión');
+                btn.innerHTML = 'Comenzar <i class="fa-solid fa-check" style="margin-left: 8px;"></i>';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

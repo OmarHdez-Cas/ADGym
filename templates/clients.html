@@ -1,0 +1,256 @@
+<!-- Clients View -->
+<div class="fade-in">
+    <div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="display: flex; gap: 10px;">
+            <div class="search-bar" style="position: relative; width: 250px;">
+                <i class="fa-solid fa-search text-muted" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);"></i>
+                <input type="text" id="search-clients" placeholder="Buscar por nombre..." style="width: 100%; padding: 12px 15px 12px 40px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            </div>
+            <select id="filter-clients" style="padding: 12px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; cursor: pointer;">
+                <option value="all">Todas</option>
+                <option value="active">Membresías Activas</option>
+                <option value="expired">Membresías Vencidas</option>
+            </select>
+        </div>
+        <button class="btn btn-primary hover-scale" style="background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600;" onclick="openNewClientModal()">
+            <i class="fa-solid fa-plus"></i> Nuevo Cliente
+        </button>
+    </div>
+
+    <div class="glass-panel" style="overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--glass-border);">
+                    <th style="padding: 15px 20px;">Nombre Completo</th>
+                    <th style="padding: 15px 20px;">Membresía</th>
+                    <th style="padding: 15px 20px;">Vencimiento</th>
+                    <th style="padding: 15px 20px; text-align: right;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="clients-table-body">
+                <!-- Data populated by JS -->
+                <tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando clientes...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div id="clients-pagination" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px; font-size: 0.95rem;">
+    </div>
+</div>
+
+<!-- Modal Overlay -->
+<div id="client-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease;">
+    <div class="glass-panel" style="width: 100%; max-width: 500px; padding: 30px; transform: translateY(-20px); transition: transform 0.3s ease; position: relative;">
+        <button onclick="closeClientModal()" style="position: absolute; right: 20px; top: 20px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem;"><i class="fa-solid fa-times"></i></button>
+        <h3 id="modal-title" style="margin-bottom: 20px; font-size: 1.5rem;">Nuevo Cliente</h3>
+        
+        <form id="client-form" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="hidden" id="client-id">
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Nombre Completo *</label>
+                <input type="text" id="client-name" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Fecha de Inscripción</label>
+                    <input type="date" id="client-start-date" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none; color-scheme: dark;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Plan de Membresía</label>
+                    <select id="client-plan" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                        <option value="" data-days="0">Sin plan asignado</option>
+                    </select>
+                </div>
+            </div>
+            <div id="plan-preview" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); display: none;">
+                Inscripción: <span id="preview-start" class="text-success" style="font-weight:bold;"></span> | Vencimiento: <span id="preview-end" class="text-danger" style="font-weight:bold;"></span>
+            </div>
+            
+            <button type="submit" id="client-save-btn" class="btn btn-primary" style="margin-top: 10px; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Guardar Cliente</button>
+        </form>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Populate plans
+    fetch('/api/plans').then(r=>r.json()).then(plans => {
+        const sel = document.getElementById('client-plan');
+        plans.forEach(p => {
+            sel.innerHTML += `<option value="${p.id}" data-days="${p.duration_days}">${p.name} ($${p.price})</option>`;
+        });
+    });
+
+    const startInput = document.getElementById('client-start-date');
+    const todayStr = new Date().toISOString().split('T')[0];
+    startInput.value = todayStr;
+
+    function updatePreview() {
+        const sel = document.getElementById('client-plan');
+        const option = sel.options[sel.selectedIndex];
+        const days = parseInt(option.getAttribute('data-days')) || 0;
+        const preview = document.getElementById('plan-preview');
+        const startDateVal = startInput.value;
+        
+        if(days > 0 && startDateVal) {
+            const startD = new Date(startDateVal + "T00:00:00");
+            const end = new Date(startD);
+            end.setDate(end.getDate() + days);
+            
+            document.getElementById('preview-start').innerText = startD.toISOString().split('T')[0];
+            document.getElementById('preview-end').innerText = end.toISOString().split('T')[0];
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    document.getElementById('client-plan').addEventListener('change', updatePreview);
+    startInput.addEventListener('change', updatePreview);
+
+    window.renderClientsTable = function() {
+        const tbody = document.getElementById('clients-table-body');
+        let filtered = window.clientsData || [];
+        
+        tbody.innerHTML = '';
+        if(filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">No se encontraron clientes.</td></tr>';
+            renderClientsPagination();
+            return;
+        }
+        
+        filtered.forEach(client => {
+            const dateParts = client.expires.split('-');
+            let isExpired = true;
+            if(dateParts.length === 3) {
+                const expDate = new Date(dateParts[0], dateParts[1]-1, dateParts[2]);
+                isExpired = expDate < new Date();
+            }
+            if(client.expires === '-') isExpired = true;
+            const expStyle = isExpired ? 'color: var(--danger); font-weight: bold;' : 'color: var(--success);';
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <td style="padding: 15px 20px;">${client.name}</td>
+                    <td style="padding: 15px 20px;">${client.membership}</td>
+                    <td style="padding: 15px 20px; ${expStyle}">${client.expires}</td>
+                    <td style="padding: 15px 20px; text-align: right;">
+                        <button onclick="editClient(${client.id}, '${client.name}', '${client.plan_id||''}', '${client.start_date||''}')" class="btn-icon" style="display:inline-flex; width:35px; height:35px;"><i class="fa-solid fa-pen text-primary"></i></button>
+                        <button onclick="deleteItem('clients', ${client.id}, 'clients')" class="btn-icon" style="display:inline-flex; width:35px; height:35px; margin-left: 5px;"><i class="fa-solid fa-trash text-danger"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        renderClientsPagination();
+    };
+    
+    function renderClientsPagination() {
+        const pag = document.getElementById('clients-pagination');
+        const page = window.clientsPage || 1;
+        const pages = window.clientsPages || 1;
+        const total = window.clientsTotal || 0;
+        
+        if (pages <= 1) { pag.innerHTML = `<span style="color: var(--text-muted);">${total} clientes</span>`; return; }
+        
+        let html = '';
+        html += `<button onclick="loadViewData('clients', ${page - 1})" class="btn-icon" style="padding: 6px 12px; border-radius: 8px;" ${page <= 1 ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+        html += `<span style="color: var(--text-muted);">Pág. ${page} de ${pages} (${total} clientes)</span>`;
+        html += `<button onclick="loadViewData('clients', ${page + 1})" class="btn-icon" style="padding: 6px 12px; border-radius: 8px;" ${page >= pages ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+        pag.innerHTML = html;
+    }
+
+    let searchTimeout;
+    document.getElementById('search-clients').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => loadViewData('clients', 1), 300);
+    });
+    document.getElementById('filter-clients').addEventListener('change', () => loadViewData('clients', 1));
+
+    function openNewClientModal() {
+        document.getElementById('modal-title').innerText = 'Nuevo Cliente';
+        document.getElementById('client-form').reset();
+        document.getElementById('client-id').value = '';
+        const modal = document.getElementById('client-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.children[0].style.transform = 'translateY(0)';
+        }, 10);
+    }
+
+    function closeClientModal() {
+        const modal = document.getElementById('client-modal');
+        modal.style.opacity = '0';
+        modal.children[0].style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    // Assign globally to be accessible from injected HTML
+    window.openNewClientModal = openNewClientModal;
+    window.closeClientModal = closeClientModal;
+    
+    document.getElementById('client-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('client-id').value;
+        const data = {
+            name: document.getElementById('client-name').value,
+            plan_id: document.getElementById('client-plan').value,
+            start_date: document.getElementById('client-start-date').value
+        };
+        
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? '/api/clients/' + id : '/api/clients';
+        
+        const btn = document.getElementById('client-save-btn');
+        btn.innerText = 'Guardando...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                closeClientModal();
+                loadViewData('clients'); // Refresh table
+            } else {
+                alert('Error al guardar el cliente');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error de conexión');
+        } finally {
+            btn.innerText = 'Guardar Cliente';
+            btn.disabled = false;
+        }
+    });
+
+    // Make edit function global
+    window.editClient = function(id, name, plan_id, start_date) {
+        document.getElementById('modal-title').innerText = 'Editar Cliente';
+        document.getElementById('client-id').value = id;
+        document.getElementById('client-name').value = name;
+        document.getElementById('client-plan').value = plan_id;
+        if(start_date) {
+            document.getElementById('client-start-date').value = start_date;
+        } else {
+            document.getElementById('client-start-date').value = new Date().toISOString().split('T')[0];
+        }
+        updatePreview();
+        
+        const modal = document.getElementById('client-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.children[0].style.transform = 'translateY(0)';
+        }, 10);
+    }
+})();
+</script>

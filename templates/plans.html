@@ -1,0 +1,122 @@
+<!-- Plans View -->
+<div class="fade-in">
+    <div class="header-actions" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <button class="btn btn-danger hover-scale" style="background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600;" onclick="openNewPlanModal()">
+            <i class="fa-solid fa-plus"></i> Nuevo Plan
+        </button>
+    </div>
+
+    <div class="quick-actions-grid" id="plans-grid">
+        <!-- Will be filled by JS -->
+        <p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">Cargando planes...</p>
+    </div>
+</div>
+
+<!-- Modal Overlay para Planes -->
+<div id="plan-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease;">
+    <div class="glass-panel" style="width: 100%; max-width: 400px; padding: 30px; transform: translateY(-20px); transition: transform 0.3s ease; position: relative;">
+        <button onclick="closePlanModal()" style="position: absolute; right: 20px; top: 20px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem;"><i class="fa-solid fa-times"></i></button>
+        <h3 id="plan-modal-title" style="margin-bottom: 20px; font-size: 1.5rem;">Nuevo Plan</h3>
+        
+        <form id="plan-form" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="hidden" id="plan-id">
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Nombre del Plan *</label>
+                <input type="text" id="plan-name" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            </div>
+            
+            <div style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Duración (Días) *</label>
+                    <input type="number" id="plan-duration" required min="1" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Precio ($) *</label>
+                    <input type="number" id="plan-price" required min="0" step="0.01" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                </div>
+            </div>
+            
+            <button type="submit" id="plan-save-btn" class="btn btn-danger" style="margin-top: 10px; padding: 12px; background: var(--danger); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Guardar Plan</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openNewPlanModal() {
+        document.getElementById('plan-modal-title').innerText = 'Nuevo Plan';
+        document.getElementById('plan-form').reset();
+        document.getElementById('plan-id').value = '';
+        
+        const modal = document.getElementById('plan-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.children[0].style.transform = 'translateY(0)';
+        }, 10);
+    }
+
+    function closePlanModal() {
+        const modal = document.getElementById('plan-modal');
+        modal.style.opacity = '0';
+        modal.children[0].style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    window.openNewPlanModal = openNewPlanModal;
+    window.closePlanModal = closePlanModal;
+    
+    document.getElementById('plan-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('plan-id').value;
+        const data = {
+            name: document.getElementById('plan-name').value,
+            duration_days: parseInt(document.getElementById('plan-duration').value),
+            price: parseFloat(document.getElementById('plan-price').value)
+        };
+        
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? '/api/plans/' + id : '/api/plans';
+        
+        const btn = document.getElementById('plan-save-btn');
+        btn.innerText = 'Guardando...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                closePlanModal();
+                loadViewData('plans'); 
+            } else {
+                alert('Error al guardar el plan');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error de conexión');
+        } finally {
+            btn.innerText = 'Guardar Plan';
+            btn.disabled = false;
+        }
+    });
+
+    window.editPlan = function(id, name, duration, price) {
+        document.getElementById('plan-modal-title').innerText = 'Editar Plan';
+        document.getElementById('plan-id').value = id;
+        document.getElementById('plan-name').value = name;
+        document.getElementById('plan-duration').value = duration;
+        document.getElementById('plan-price').value = price;
+        
+        const modal = document.getElementById('plan-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.children[0].style.transform = 'translateY(0)';
+        }, 10);
+    }
+</script>

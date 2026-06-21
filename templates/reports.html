@@ -1,0 +1,254 @@
+<!-- Reports View -->
+<style>
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        opacity: 0.6;
+        cursor: pointer;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
+    select#report-employee {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+    }
+</style>
+<div class="fade-in">
+    <div class="glass-panel" style="padding: 20px; margin-bottom: 20px; display: flex; gap: 20px; align-items: center;">
+        <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.9rem;">Empleado</label>
+            <select id="report-employee" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                <option value="all">Todos los empleados</option>
+            </select>
+        </div>
+        <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.9rem;">Fecha Inicio</label>
+            <input type="date" id="report-start-date" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+        </div>
+        <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 0.9rem;">Fecha Fin</label>
+            <input type="date" id="report-end-date" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+        </div>
+        <div style="margin-top: 25px;">
+            <button class="btn hover-scale" style="background: var(--purple); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="generateReport()">
+                <i class="fa-solid fa-filter"></i> Filtrar
+            </button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card glass-panel stagger-1" style="background: rgba(139, 92, 246, 0.1);">
+            <div class="stat-icon bg-purple-glow" style="color: var(--purple);">
+                <i class="fa-solid fa-money-bill-trend-up"></i>
+            </div>
+            <div class="stat-details">
+                <h3>Total Ventas</h3>
+                <p class="stat-value" id="report-total-sales">$0.00</p>
+            </div>
+        </div>
+        <div class="stat-card glass-panel stagger-2" style="background: rgba(16, 185, 129, 0.1);">
+            <div class="stat-icon bg-success-glow">
+                <i class="fa-solid fa-receipt"></i>
+            </div>
+            <div class="stat-details">
+                <h3>Transacciones</h3>
+                <p class="stat-value" id="report-total-transactions">0</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-panel" style="overflow: hidden; margin-top: 20px;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <tbody id="reports-table-body">
+                <tr><td style="text-align: center; padding: 20px; color: var(--text-muted);">Seleccione filtros para ver el reporte...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div id="reports-pagination" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px; font-size: 0.95rem;">
+    </div>
+</div>
+
+<script>
+    window.reportsCurrentPage = 1;
+    
+    async function generateReport(page) {
+        page = page || 1;
+        window.reportsCurrentPage = page;
+        const empEl = document.getElementById('report-employee');
+        const empId = empEl ? empEl.value : 'all';
+        const start = document.getElementById('report-start-date') ? document.getElementById('report-start-date').value : '';
+        const end = document.getElementById('report-end-date') ? document.getElementById('report-end-date').value : '';
+        try {
+            let url = `/api/reports?page=${page}&per_page=100`;
+            if (empId !== 'all') url += `&employee_id=${empId}`;
+            if (start) url += `&start_date=${start}`;
+            if (end) url += `&end_date=${end}`;
+            
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            let d = new Date();
+            let todayStrLocal = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+            
+            let globalTodayTotal = 0;
+            let globalTodayCount = 0;
+            
+            const tbody = document.getElementById('reports-table-body');
+            tbody.innerHTML = '';
+            
+            if(data.sales.length === 0) {
+                document.getElementById('report-total-sales').innerText = '$0.00';
+                document.getElementById('report-total-transactions').innerText = '0';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: var(--text-muted);">No hay ventas en este periodo.</td></tr>';
+                renderReportsPagination(data);
+                return;
+            }
+            
+            let byEmployee = {};
+            data.sales.forEach(s => {
+                if(!byEmployee[s.employee]) byEmployee[s.employee] = { todayTotal: 0, todayCount: 0, items: [] };
+                
+                const dateOnly = s.date.split(' ')[0];
+                if (dateOnly === todayStrLocal) {
+                    byEmployee[s.employee].todayTotal += s.total;
+                    byEmployee[s.employee].todayCount++;
+                    globalTodayTotal += s.total;
+                    globalTodayCount++;
+                }
+                
+                byEmployee[s.employee].items.push(s);
+            });
+            
+            document.getElementById('report-total-sales').innerText = '$' + data.total_revenue.toFixed(2);
+            document.getElementById('report-total-transactions').innerText = data.transactions;
+            
+            window.showAllDates = function(empName) {
+                document.querySelectorAll(`.hidden-dates-${empName.replace(/[^a-zA-Z0-9]/g, '')}`).forEach(el => el.style.display = 'block');
+                document.getElementById(`btn-show-more-${empName.replace(/[^a-zA-Z0-9]/g, '')}`).style.display = 'none';
+            };
+            
+            for(let emp in byEmployee) {
+                const e = byEmployee[emp];
+                
+                let byDate = {};
+                e.items.forEach(s => {
+                    const dateOnly = s.date.split(' ')[0];
+                    if(!byDate[dateOnly]) byDate[dateOnly] = [];
+                    byDate[dateOnly].push(s);
+                });
+                
+                const sortedDates = Object.keys(byDate).sort().reverse();
+                let dateSections = '';
+                let dateIndex = 0;
+                
+                sortedDates.forEach(d => {
+                    let rows = '';
+                    let dateTotal = 0;
+                    byDate[d].forEach(s => {
+                        dateTotal += s.total;
+                        const timeOnly = s.date.split(' ')[1] || '';
+                        rows += `
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 10px;">${timeOnly}</td>
+                                <td style="padding: 10px;">${s.tipo}</td>
+                                <td style="padding: 10px; font-weight: bold; color: var(--success); text-align: right;">$${s.total.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    const isHidden = dateIndex >= 7;
+                    const hiddenClass = isHidden ? `hidden-dates-${emp.replace(/[^a-zA-Z0-9]/g, '')}` : '';
+                    const displayStyle = isHidden ? 'display: none;' : '';
+                    
+                    dateSections += `
+                        <div class="${hiddenClass}" style="margin-bottom: 10px; ${displayStyle}">
+                            <div style="padding: 5px 10px; background: rgba(255,255,255,0.05); font-weight: bold; display: flex; justify-content: space-between; border-radius: 4px;">
+                                <span><i class="fa-regular fa-calendar"></i> ${d}</span>
+                                <span class="text-success">$${dateTotal.toFixed(2)}</span>
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                                ${rows}
+                            </table>
+                        </div>
+                    `;
+                    dateIndex++;
+                });
+                
+                let showMoreBtn = '';
+                if(sortedDates.length > 7) {
+                    showMoreBtn = `
+                        <div style="text-align: center; margin-top: 10px;">
+                            <button id="btn-show-more-${emp.replace(/[^a-zA-Z0-9]/g, '')}" class="btn" style="background: transparent; border: 1px solid var(--purple); color: var(--purple); padding: 5px 15px; border-radius: 5px; cursor: pointer;" onclick="showAllDates('${emp}')">Ver Todo el Historial</button>
+                        </div>
+                    `;
+                }
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="padding: 10px;">
+                            <details style="background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--glass-border);">
+                                <summary style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; font-weight: bold; outline: none; list-style: none;">
+                                    <span><i class="fa-solid fa-user"></i> ${emp} (${e.todayCount} transacciones hoy)</span>
+                                    <span class="text-success">$${e.todayTotal.toFixed(2)} hoy</span>
+                                </summary>
+                                <div style="padding: 10px 20px;">
+                                    ${dateSections}
+                                    ${showMoreBtn}
+                                </div>
+                            </details>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            renderReportsPagination(data);
+        } catch(err) {
+            console.error(err);
+            alert("Error al cargar reporte.");
+        }
+    }
+    
+    function renderReportsPagination(data) {
+        const pag = document.getElementById('reports-pagination');
+        const page = data.page || 1;
+        const pages = data.pages || 1;
+        
+        if (pages <= 1) { pag.innerHTML = ''; return; }
+        
+        let html = '';
+        html += `<button onclick="generateReport(${page - 1})" class="btn-icon" style="padding: 6px 12px; border-radius: 8px;" ${page <= 1 ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+        html += `<span style="color: var(--text-muted);">Pág. ${page} de ${pages}</span>`;
+        html += `<button onclick="generateReport(${page + 1})" class="btn-icon" style="padding: 6px 12px; border-radius: 8px;" ${page >= pages ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+        pag.innerHTML = html;
+    }
+    
+    window.generateReport = generateReport;
+    
+    async function loadEmployees() {
+        try {
+            const res = await fetch('/api/employees');
+            const data = await res.json();
+            const select = document.getElementById('report-employee');
+            if (select) {
+                select.innerHTML = '<option value="all">Todos los empleados</option>';
+                data.forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id;
+                    opt.innerText = e.name;
+                    select.appendChild(opt);
+                });
+            }
+        } catch(err) {
+            console.error("Error loading employees", err);
+        }
+    }
+    
+    loadEmployees();
+    setTimeout(generateReport, 100);
+</script>

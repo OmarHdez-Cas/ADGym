@@ -1,0 +1,143 @@
+<!-- Employees View -->
+<div class="fade-in">
+    <div class="header-actions" style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <button class="btn btn-primary hover-scale" style="background: #42A5F5; color: white; border: none; padding: 10px 20px; border-radius: 12px; cursor: pointer; font-weight: 600;" onclick="openNewEmployeeModal()">
+            <i class="fa-solid fa-plus"></i> Nuevo Empleado
+        </button>
+    </div>
+
+    <div class="glass-panel" style="overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--glass-border);">
+                    <th style="padding: 15px 20px;">ID</th>
+                    <th style="padding: 15px 20px;">Nombre</th>
+                    <th style="padding: 15px 20px;">Usuario</th>
+                    <th style="padding: 15px 20px;">Estado</th>
+                    <th style="padding: 15px 20px; text-align: right;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="employees-table-body">
+                <tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando empleados...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Overlay para Empleados -->
+<div id="employee-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s ease;">
+    <div class="glass-panel" style="width: 100%; max-width: 400px; padding: 30px; transform: translateY(-20px); transition: transform 0.3s ease; position: relative;">
+        <button onclick="closeEmployeeModal()" style="position: absolute; right: 20px; top: 20px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem;"><i class="fa-solid fa-times"></i></button>
+        <h3 id="employee-modal-title" style="margin-bottom: 20px; font-size: 1.5rem;">Nuevo Empleado</h3>
+        
+        <form id="employee-form" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="hidden" id="employee-id">
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Nombre Completo *</label>
+                <input type="text" id="employee-name" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Usuario (Para Login) *</label>
+                <input type="text" id="employee-username" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem;">Contraseña *</label>
+                <input type="password" id="employee-password" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: white; outline: none;">
+                <small style="color: var(--text-muted); font-size: 0.8rem;" id="password-hint">Déjalo en blanco para mantener la actual al editar.</small>
+            </div>
+            
+
+            <button type="submit" id="employee-save-btn" class="btn" style="margin-top: 10px; padding: 12px; background: #42A5F5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Guardar Empleado</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openNewEmployeeModal() {
+        document.getElementById('employee-modal-title').innerText = 'Nuevo Empleado';
+        document.getElementById('employee-form').reset();
+        document.getElementById('employee-id').value = '';
+        document.getElementById('employee-password').required = true;
+        
+        const modal = document.getElementById('employee-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.children[0].style.transform = 'translateY(0)';
+        }, 10);
+    }
+
+    function closeEmployeeModal() {
+        const modal = document.getElementById('employee-modal');
+        modal.style.opacity = '0';
+        modal.children[0].style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    window.openNewEmployeeModal = openNewEmployeeModal;
+    window.closeEmployeeModal = closeEmployeeModal;
+    
+    document.getElementById('employee-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('employee-id').value;
+        
+        const data = {
+            name: document.getElementById('employee-name').value,
+            username: document.getElementById('employee-username').value,
+            role: 'employee'
+        };
+        
+        const pwd = document.getElementById('employee-password').value;
+        if (pwd) data.password = pwd;
+        
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? '/api/employees/' + id : '/api/employees';
+        
+        const btn = document.getElementById('employee-save-btn');
+        btn.innerText = 'Guardando...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                closeEmployeeModal();
+                loadViewData('employees'); 
+            } else {
+                const errData = await res.json();
+                alert(errData.message || 'Error al guardar el empleado');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error de conexión');
+        } finally {
+            btn.innerText = 'Guardar Empleado';
+            btn.disabled = false;
+        }
+    });
+
+    window.editEmployee = function(id, name, username, roleStr) {
+        document.getElementById('employee-modal-title').innerText = 'Editar Empleado';
+        document.getElementById('employee-id').value = id;
+        document.getElementById('employee-name').value = name;
+        document.getElementById('employee-username').value = username;
+        
+
+        document.getElementById('employee-password').required = false;
+        
+        const modal = document.getElementById('employee-modal');
+        modal.style.display = 'flex';
+        setTimeout(() => {
+            modal.style.opacity = '1';
+            modal.children[0].style.transform = 'translateY(0)';
+        }, 10);
+    }
+</script>

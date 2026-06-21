@@ -1,0 +1,61 @@
+# ─── Entornos Virtuales Python ───────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+.env/
+
+# ─── Caché de Python ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ─── Base de Datos Local ─────────────────────────────────────────────────────
+# La BD de producción vive en ~/.santa_fuerza/ — esta copia local es solo dev
+*.sqlite
+*.sqlite3
+*.db
+
+# ─── Variables de Entorno y Secretos ─────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+secrets.py
+
+# ─── Distribución y Empaquetado (PyInstaller) ────────────────────────────────
+dist/
+build/
+*.spec
+*.egg-info/
+*.egg
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ─── Windows ─────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ─── IDEs y Editores ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+*~
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Pytest y Cobertura ──────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
